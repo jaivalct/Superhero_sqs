@@ -10,6 +10,8 @@ import org.springframework.web.bind.annotation.*;
 import software.amazon.awssdk.services.sqs.SqsClient;
 import software.amazon.awssdk.services.sqs.model.SendMessageRequest;
 import software.amazon.awssdk.services.sqs.model.SendMessageResponse;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.util.List;
 
@@ -64,6 +66,26 @@ public class SuperheroController {
         return "All superheroes have been pushed to the queue.";
     }
 
+    @PostMapping("/add_superhero")
+    public String addSuperhero(@RequestParam String name, @RequestParam String power, @RequestParam String universe) {
+        Superhero superhero = new Superhero(); // Use the default constructor
+        superhero.setName(name);
+        superhero.setPower(power);
+        superhero.setUniverse(universe);
+
+        try {
+            // Serialize the superhero object to JSON
+            String messageBody = new ObjectMapper().writeValueAsString(superhero);
+            sqsClient.sendMessage(SendMessageRequest.builder()
+                .queueUrl(sqsConfig.getQueueUrl())
+                .messageBody(messageBody)
+                .build());
+
+            return String.format("Superhero %s added to the queue!", superhero.getName());
+        } catch (JsonProcessingException e) {
+            return "Error processing superhero object: " + e.getMessage();
+        }
+    }
 
     @GetMapping("/get_all_messages")
     public List<String> getAllMessages() {

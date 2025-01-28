@@ -31,8 +31,7 @@ public class QueueService {
         List<Message> messages = receiveMessageResponse.messages();
         for (Message message : messages) {
             messageBodies.add("Message ID: " + message.messageId() + 
-                              ", Message Body: " + message.body() + 
-                              ", Receipt Handle: " + message.receiptHandle());
+                              ", Message Body: " + message.body());
         }
         return messageBodies;
     }

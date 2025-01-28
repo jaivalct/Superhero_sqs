@@ -7,6 +7,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import software.amazon.awssdk.services.sqs.SqsClient;
 import software.amazon.awssdk.services.sqs.model.SendMessageRequest;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.core.JsonProcessingException;
 
 import java.util.List;
 
@@ -15,6 +17,7 @@ public class SuperheroService {
 
     private SuperheroRepository superheroRepository;
     private SqsClient sqsClient;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Autowired
     public SuperheroService(SuperheroRepository superheroRepository, SqsClient sqsClient) {
@@ -47,12 +50,16 @@ public class SuperheroService {
     public void pushAllSuperheroesToQueue(String queueUrl) {
         List<Superhero> superheroes = superheroRepository.findAll();
         for (Superhero superhero : superheroes) {
-            String messageBody = superhero.getName() + "," + superhero.getPower() + "," + superhero.getUniverse();
-            SendMessageRequest sendMessageRequest = SendMessageRequest.builder()
-                    .queueUrl(queueUrl)
-                    .messageBody(messageBody)
-                    .build();
-            sqsClient.sendMessage(sendMessageRequest);
+            try {
+                String messageBody = objectMapper.writeValueAsString(superhero);
+                SendMessageRequest sendMessageRequest = SendMessageRequest.builder()
+                        .queueUrl(queueUrl)
+                        .messageBody(messageBody)
+                        .build();
+                sqsClient.sendMessage(sendMessageRequest);
+            } catch (JsonProcessingException e) {
+                System.err.println("Error serializing superhero: " + e.getMessage());
+            }
         }
     }
 }

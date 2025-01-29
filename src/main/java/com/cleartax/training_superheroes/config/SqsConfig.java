@@ -14,19 +14,19 @@ public class SqsConfig {
   @Value("${sqs.queue.url}")
   private String queueUrl;
 
-  @Value("${sqs.queue.region}")
+  @Value("${spring.cloud.aws.sqs.region}")
   private String region;
 
-  @Value("${sqs.queue.access-key}")
+  @Value("${spring.cloud.aws.credentials.access-key}")
   private String accessKey;
 
-  @Value("${sqs.queue.secret-key}")
+  @Value("${spring.cloud.aws.credentials.secret-key}")
   private String secretKey;
 
   // @Value("${sqs.queue.session-token}")
   // private String sessionToken;
 
-  @Value("${sqs.localstack.endpoint}")
+  @Value("${spring.cloud.aws.sqs.endpoint}")
   private String localstackEndpoint;
 
 }

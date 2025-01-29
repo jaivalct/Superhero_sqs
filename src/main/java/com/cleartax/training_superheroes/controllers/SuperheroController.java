@@ -62,8 +62,8 @@ public class SuperheroController {
 
     @PostMapping("/push_all_superheroes")
     public String pushAllSuperheroes() {
-        superheroService.pushAllSuperheroesToQueue(sqsConfig.getQueueUrl());
-        return "All superheroes have been pushed to the queue.";
+        superheroService.pushAllSuperheroesToQueue();
+        return "All superheroes have been prepared for processing.";
     }
 
     @PostMapping("/add_superhero")
@@ -76,12 +76,13 @@ public class SuperheroController {
         try {
             // Serialize the superhero object to JSON
             String messageBody = new ObjectMapper().writeValueAsString(superhero);
-            sqsClient.sendMessage(SendMessageRequest.builder()
+            SendMessageRequest sendMessageRequest = SendMessageRequest.builder()
                 .queueUrl(sqsConfig.getQueueUrl())
                 .messageBody(messageBody)
-                .build());
-
-            return String.format("Superhero %s added to the queue!", superhero.getName());
+                .build();
+            sqsClient.sendMessage(sendMessageRequest);
+            System.out.println("Message ready to be processed: " + messageBody);
+            return String.format("Superhero %s added for processing!", superhero.getName());
         } catch (JsonProcessingException e) {
             return "Error processing superhero object: " + e.getMessage();
         }

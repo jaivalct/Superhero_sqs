@@ -1,11 +1,11 @@
 package com.cleartax.training_superheroes.services;
 
 import com.cleartax.training_superheroes.config.SqsConfig;
+import io.awspring.cloud.sqs.annotation.SqsListener;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.beans.factory.annotation.Value;
+//import org.springframework.cloud.aws.messaging.listener.annotation.SqsListener;
 import org.springframework.stereotype.Service;
-import software.amazon.awssdk.services.sqs.SqsClient;
-import software.amazon.awssdk.services.sqs.model.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.cleartax.training_superheroes.entities.Superhero;
@@ -15,54 +15,44 @@ import com.cleartax.training_superheroes.repos.SuperheroRepository;
 public class SuperheroConsumer {
   @Autowired
   private SqsConfig sqsConfig;
-  @Autowired
-  private SqsClient sqsClient;
+
   @Autowired
   private SuperheroRepository superheroRepository;
 
-  @Scheduled(fixedDelay = 5000)
-  public void consumeSuperhero() {
+  @Value("${sqs.queue.url}")
+  private String queueUrl;
+
+  @SqsListener("${sqs.queue.name}")
+  public void consumeSuperhero(String messageBody) {
     try {
-      ReceiveMessageResponse receiveMessageResponse = sqsClient.receiveMessage(ReceiveMessageRequest.builder()
-              .queueUrl(sqsConfig.getQueueUrl())
-              .maxNumberOfMessages(1)  // Adjust according to your needs
-              .waitTimeSeconds(10) // Enable long polling
-              .build());
+      // Process the message
+      System.out.println("Received message: " + messageBody);
 
-      receiveMessageResponse.messages().forEach(message -> {
-        // Process the message
-        String body = message.body();
-        System.out.println("Received message: " + body);
+      try {
+        // Deserialize the message body to Superhero object
+        Superhero superhero = new ObjectMapper().readValue(messageBody, Superhero.class);
 
-        try {
-          // Deserialize the message body to Superhero object
-          Superhero superhero = new ObjectMapper().readValue(body, Superhero.class);
-
-          // Check if superhero exists
-          Superhero existingSuperhero = superheroRepository.findByName(superhero.getName());
-          if (existingSuperhero != null) {
-            // Update the power of the existing superhero
-            existingSuperhero.setPower(superhero.getPower());
-            superheroRepository.save(existingSuperhero);
-            System.out.println("Updated superhero: " + superhero.getName() + " with new power: " + superhero.getPower());
-          } else {
-            // Save the new superhero
-            // superheroRepository.save(superhero);
-            // System.out.println("Created new superhero: " + superhero.getName() + " with power: " + superhero.getPower());
-            System.out.println("Superhero not found in database");
-          }
-
-          // Delete the message after processing
-          sqsClient.deleteMessage(DeleteMessageRequest.builder()
-                  .queueUrl(sqsConfig.getQueueUrl())
-                  .receiptHandle(message.receiptHandle())
-                  .build());
-        } catch (JsonProcessingException e) {
-          System.err.println("Error processing message: " + e.getMessage());
+        // Check if superhero exists
+        Superhero existingSuperhero = superheroRepository.findByName(superhero.getName());
+        if (existingSuperhero != null) {
+          // Update the power of the existing superhero
+          existingSuperhero.setPower(superhero.getPower());
+          superheroRepository.save(existingSuperhero);
+          System.out.println("Updated superhero: " + superhero.getName() + " with new power: " + superhero.getPower());
+        } else {
+          // Save the new superhero
+          // superheroRepository.save(superhero);
+          // System.out.println("Created new superhero: " + superhero.getName() + " with power: " + superhero.getPower());
+          System.out.println("Superhero not found in database");
         }
-      });
-    } catch (SqsException e) {
-      System.err.println("SQS error: " + e.awsErrorDetails().errorMessage());
+
+        // If you need to delete the message, you can use sqsClient here
+        // sqsClient.deleteMessage(...);
+      } catch (JsonProcessingException e) {
+        System.err.println("Error processing message: " + e.getMessage());
+      }
+    } catch (Exception e) {
+      System.err.println("Error: " + e.getMessage());
       System.out.println("The queue might be empty!!");
     }
   }

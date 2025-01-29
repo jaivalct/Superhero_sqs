@@ -9,7 +9,7 @@ import software.amazon.awssdk.services.sqs.SqsClient;
 import software.amazon.awssdk.services.sqs.model.SendMessageRequest;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.core.JsonProcessingException;
-
+import com.cleartax.training_superheroes.config.SqsConfig;
 import java.util.List;
 
 @Service
@@ -18,6 +18,9 @@ public class SuperheroService {
     private SuperheroRepository superheroRepository;
     private SqsClient sqsClient;
     private final ObjectMapper objectMapper = new ObjectMapper();
+
+    @Autowired
+    private SqsConfig sqsConfig;
 
     @Autowired
     public SuperheroService(SuperheroRepository superheroRepository, SqsClient sqsClient) {
@@ -47,16 +50,17 @@ public class SuperheroService {
         }
     }
 
-    public void pushAllSuperheroesToQueue(String queueUrl) {
+    public void pushAllSuperheroesToQueue() {
         List<Superhero> superheroes = superheroRepository.findAll();
         for (Superhero superhero : superheroes) {
             try {
                 String messageBody = objectMapper.writeValueAsString(superhero);
                 SendMessageRequest sendMessageRequest = SendMessageRequest.builder()
-                        .queueUrl(queueUrl)
-                        .messageBody(messageBody)
-                        .build();
+                    .queueUrl(sqsConfig.getQueueUrl())
+                    .messageBody(messageBody)
+                    .build();
                 sqsClient.sendMessage(sendMessageRequest);
+                System.out.println("Message ready to be processed: " + messageBody);
             } catch (JsonProcessingException e) {
                 System.err.println("Error serializing superhero: " + e.getMessage());
             }
